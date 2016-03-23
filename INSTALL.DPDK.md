@@ -28,12 +28,11 @@ on Debian/Ubuntu)
      cd $DPDK_DIR
      ```
 
-  2. Update `config/common_linuxapp` so that DPDK generate single lib file.
-     (modification also required for IVSHMEM build)
+  2. Create a suitable configuration. For example:
 
-     `CONFIG_RTE_BUILD_COMBINE_LIBS=y`
+     `make config T=x86_64-native-linuxapp-gcc`
 
-     Then run `make install` to build and install the library.
+  3. Run `make install` to build and install the library.
      For default install without IVSHMEM:
 
      `make install T=x86_64-native-linuxapp-gcc DESTDIR=install`
