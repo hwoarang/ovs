@@ -161,19 +161,24 @@ dnl Configure DPDK source tree
 AC_DEFUN([OVS_CHECK_DPDK], [
   AC_ARG_WITH([dpdk],
               [AC_HELP_STRING([--with-dpdk=/path/to/dpdk],
-                              [Specify the DPDK build directory])])
+                              [Specify the DPDK build or install directory])])
 
   if test X"$with_dpdk" != X; then
     RTE_SDK=$with_dpdk
 
     DPDK_INCLUDE=$RTE_SDK/include
+    # Maybe RTE_SDK points to an installed DPDK?
+    # DPDK installs headers in $DESTDIR/$prefix/include/dpdk
+    if test ! -e $DPDK_INCLUDE/rte_config.h; then
+        DPDK_INCLUDE=$DPDK_INCLUDE/dpdk
+    fi
     DPDK_LIB_DIR=$RTE_SDK/lib
     DPDK_LIB="-ldpdk"
     DPDK_EXTRA_LIB=""
-    RTE_SDK_FULL=`readlink -f $RTE_SDK`
+    DPDK_INCLUDE_FULL=`readlink -f $DPDK_INCLUDE`
 
     AC_COMPILE_IFELSE(
-      [AC_LANG_PROGRAM([#include <$RTE_SDK_FULL/include/rte_config.h>
+      [AC_LANG_PROGRAM([#include <$DPDK_INCLUDE_FULL/rte_config.h>
 #if !RTE_LIBRTE_VHOST_USER
 #error
 #endif], [])],
