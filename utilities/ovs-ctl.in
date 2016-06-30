@@ -230,7 +230,12 @@ do_start_forwarding () {
         fi
 
         # Start ovs-vswitchd.
-        set ovs-vswitchd unix:"$DB_SOCK"
+        set ovs-vswitchd
+        # DPDK options are expected to be at the beginning of
+        # the command line arguments. Add '--' to mark the end
+        # of the DPDK options.
+        [ -n "$DPDK_OPTS" ] && set -- "$@" $DPDK_OPTS "--"
+        set "$@" unix:"$DB_SOCK"
         set "$@" -vconsole:emer -vsyslog:err -vfile:info
         if test X"$MLOCKALL" != Xno; then
             set "$@" --mlockall
@@ -485,6 +490,25 @@ enable_protocol () {
     fi
 }
 
+## ------------------ ##
+## parse-dpdk-cmdline ##
+## ------------------ ##
+parse_dpdk_cmdline () {
+    echo "${@}" | grep -q -- "--dpdk" || return
+
+    # The DPDK options can be passed anywhere on the command line when
+    # calling the ovs-ctl script so find out where they are.
+    if echo "${@}" | grep -q " -- "; then
+        # end of command line options found
+        DPDK_OPTS="$(echo ${@} | sed 's/^.*\(--dpdk.*\)\s* -- .*$/\1/')"
+        cmdline_args="$(echo "${@}" | sed 's/\(^.*\)\(--dpdk.*\)\s* -- \(.*$\)/\1\3/')"
+    else
+        # no end of command line options found. DPDK options will be at the end
+        DPDK_OPTS="$(echo ${@} | sed 's/^.*\(--dpdk.*$\)/\1/')"
+        cmdline_args="$(echo "${@}" | sed 's/\(^.*\)\(--dpdk.*$\)/\1/')"
+    fi
+}
+
 ## ---- ##
 ## main ##
 ## ---- ##
@@ -530,13 +554,15 @@ set_defaults () {
         SYSTEM_TYPE=unknown
         SYSTEM_VERSION=unknown
     fi
+
+    DPDK_OPTS=
 }
 
 usage () {
     set_defaults
     cat <<EOF
 $0: controls Open vSwitch daemons
-usage: $0 [OPTIONS] COMMAND
+usage: $0 [DPDK OPTIONS] [OPTIONS] COMMAND
 
 This program is intended to be invoked internally by Open vSwitch startup
 scripts.  System administrators should not normally invoke it directly.
@@ -624,7 +650,11 @@ daemons () {
 
 set_defaults
 extra_ids=
+cmdline_args="${@}"
 command=
+parse_dpdk_cmdline "${cmdline_args}"
+set -- ${cmdline_args}
+
 for arg
 do
     case $arg in
